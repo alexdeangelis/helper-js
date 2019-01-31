@@ -6,12 +6,30 @@ The first div will wrap around the embedded Youtube video, the second div is nes
 -->
 
 <!-- (1) video wrapper -->
-<div class="youtube" data-embed="AqcjdkPMPJA"> 
+<div class="youtube" data-embed="<?php echo $embed_id; ?>" <?php echo $vimeo_data_id; ?>> 
  
     <!-- (2) the "play" button -->
     <div class="play-button"></div> 
      
 </div>
+
+<?php
+
+// $vimeo_data_id needs to be added to the youtube element
+// $embed_id needs to be added to the data-embed attribute in the youtube
+
+$video_url = get_field('video_url',$post->ID);
+$embed_id_pos = strrpos($video_url, '/');
+$embed_id = $embed_id_pos === false ? $video_url : substr($video_url, $embed_id_pos + 1);
+
+// If the video embed url includes the word 'Vimeo' give the element the correct data attribute
+if (\strpos($video_url, 'vimeo') !== false) {
+    $vimeo_data_id = 'data-vidhost="vimeo"';
+} else {
+    $vimeo_data_id = false;
+}
+
+?>
 
 <!--
 CSS STYLES
@@ -90,34 +108,64 @@ Add this JS to the footer
 -->
 
 <script>
-( function() {
-
-    var youtube = document.querySelectorAll( ".youtube" );
-
-    for (var i = 0; i < youtube.length; i++) {
-
-        var source = "https://img.youtube.com/vi/"+ youtube[i].getAttribute('data-embed') +"/sddefault.jpg";
-
+function setVideoThumbnail(vidDiv) {
+    if (vidDiv.dataset.vidhost === "vimeo") {
+        var x = new XMLHttpRequest();
+        x.open("GET", "http://vimeo.com/api/v2/video/" + vidDiv.dataset.embed +".xml", true);
+        x.onreadystatechange = function () {
+          if (x.readyState == 4 && x.status == 200)
+          {
+            var doc = x.responseXML;
+            source = doc.getElementsByTagName("thumbnail_large")[0].innerHTML;
+            var image = new Image();
+            image.src = source;
+            image.style.top = "0%";
+            image.addEventListener( "load", function() {
+                vidDiv.appendChild( image );
+            });
+          }
+        };
+        x.send(null);
+    } else {
+        var source = "https://img.youtube.com/vi/"+ vidDiv.dataset.embed +"/sddefault.jpg"; 
+        
         var image = new Image();
         image.src = source;
-        
         image.addEventListener( "load", function() {
-            youtube[ i ].appendChild( image );
-        }( i ) );
+            vidDiv.appendChild( image );
+        });
+    } 
+}
 
-        youtube[i].addEventListener( "click", function() {
+function setClickResponseFunction(vidDiv) {
+    var embedSrc;
+    if (vidDiv.dataset.vidhost === "vimeo") {
+        embedSrc = "https://player.vimeo.com/video/" + vidDiv.dataset.embed + "?autoplay=1";
+    } else {
+        embedSrc = "https://www.youtube.com/embed/" + vidDiv.dataset.embed + "?rel=0&showinfo=0&autoplay=1";
+    } 
+    
+    vidDiv.addEventListener( "click", function() {
+        var iframe = document.createElement( "iframe" );
 
-            var iframe = document.createElement( "iframe" );
-            iframe.setAttribute( "frameborder", "0" );
-            iframe.setAttribute( "allowfullscreen", "" );
-            iframe.setAttribute( "src", "https://www.youtube.com/embed/"+ this.getAttribute('data-embed') +"?rel=0&showinfo=0&autoplay=1" );
+        iframe.setAttribute( "frameborder", "0" );
+        iframe.setAttribute( "allowfullscreen", "" );
+        iframe.setAttribute( "src", embedSrc );
 
-            this.innerHTML = "";
-            this.appendChild( iframe );
-            
-        } ); 
-        
-    };
+        this.innerHTML = "";
+        this.appendChild( iframe );
+    } );
+}
 
-} )();
+function loadLazyVideos() {
+    var youtube = document.querySelectorAll( ".youtube" );
+    
+    for (var i = 0; i < youtube.length; i++) {
+        setVideoThumbnail(youtube[i]);
+        setClickResponseFunction(youtube[i]);
+    }
+}
+
+
+loadLazyVideos();
 </script>
