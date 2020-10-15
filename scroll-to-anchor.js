@@ -22,3 +22,14 @@ jQuery(document).ready(function(){
     } // End if
   });
 });
+
+// If this doesn't work, do this:
+
+jQuery(document).ready(function(){
+    jQuery( "a.scrollLink" ).click(function( event ) {
+        event.preventDefault();
+        jQuery("html, body").animate({ scrollTop: jQuery(jQuery(this).attr("href")).offset().top }, 500);
+    });
+});
+
+// Element to click should be an a element & have the class scrollLink.
